@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestNotWriteable(t *testing.T) {
@@ -124,6 +125,21 @@ func TestBool(t *testing.T) {
 	}
 }
 
+func TestDuration(t *testing.T) {
+	type testOpts struct {
+		DurationType time.Duration `env:"E_DUR"`
+	}
+	os.Setenv("E_DUR", "1m")
+	opts := &testOpts{}
+	err := ReadEnv(opts)
+	if err != nil {
+		t.Errorf("readenv failed: %v", err)
+	}
+	if opts.DurationType != time.Duration(1)*time.Minute {
+		t.Errorf("duration should have been 1 minute but was %s", opts.DurationType)
+	}
+}
+
 func TestReadToStruct(t *testing.T) {
 	type testOpts struct {
 		F string `env:"F"`
@@ -178,6 +194,17 @@ func TestReadBadString(t *testing.T) {
 		S string `env:"S"`
 	}
 	opts := &testOpts{}
+	if err := ReadEnv(opts); err == nil {
+		t.Error("should have gotten an error but did not")
+	}
+}
+
+func TestReadBadDuration(t *testing.T) {
+	type testOpts struct {
+		D time.Duration `env:"D"`
+	}
+	opts := &testOpts{}
+	os.Setenv("D", "not a duration")
 	if err := ReadEnv(opts); err == nil {
 		t.Error("should have gotten an error but did not")
 	}

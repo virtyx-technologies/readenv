@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ReadEnv reads environment variables into the provided struct pointer. If
@@ -30,6 +31,10 @@ import (
 // boolean fields: if the environment variable is set to "no", "off", "0", or is
 // empty, the bool will be set to false. Any other value in the environment will
 // set it to true.
+//
+// ReadEnv can also read fields of type time.Duration. The environment variable
+// is fed to time.ParseDuration, so any duration format that is supported by
+// time.Duration is transitively supported by ReadEnv.
 func ReadEnv(dest interface{}) error {
 	v := reflect.ValueOf(dest)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
@@ -66,6 +71,10 @@ func readField(val reflect.Value, field reflect.StructField) error {
 			}
 		} else if isBool(field.Type) {
 			readEnvBool(val, envName)
+		} else if isDuration(field.Type) {
+			if err := readEnvDuration(val, envName); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -126,4 +135,17 @@ func readEnvBool(field reflect.Value, name string) {
 	} else {
 		field.SetBool(true)
 	}
+}
+
+func isDuration(t reflect.Type) bool {
+	return t == reflect.TypeOf(time.Duration(0))
+}
+
+func readEnvDuration(field reflect.Value, name string) error {
+	v, err := time.ParseDuration(os.Getenv(name))
+	if err != nil {
+		return err
+	}
+	field.Set(reflect.ValueOf(v))
+	return nil
 }
